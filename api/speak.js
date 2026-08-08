@@ -3,14 +3,19 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { text } = req.body || {};
+  const { text, voice } = req.body || {};
   if (!text) {
     return res.status(400).json({ error: "Missing text" });
   }
 
-  const VOICE_ID = "b6nVfb3l2zshrLZTvqbs";
-  const apiKey = process.env.ELEVENLABS_API_KEY;
+  // Whitelist of allowed voices
+  const VOICES = {
+    sarah: "b6nVfb3l2zshrLZTvqbs",
+    patrick: "XTyroWkQl32ZSd3rRVZ1",
+  };
+  const VOICE_ID = VOICES[voice] || VOICES.sarah;
 
+  const apiKey = process.env.ELEVENLABS_API_KEY;
   if (!apiKey) {
     return res.status(500).json({ error: "Server missing API key" });
   }
