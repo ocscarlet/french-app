@@ -431,15 +431,32 @@ export default function FrenchLearningApp() {
     if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = loadVoices;
   }, []);
 
-  function speak(text) {
-    if (!window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text.replace(/\.\.\./g, ""));
-    u.lang = "fr-FR";
-    u.rate = rate;
-    const v = voices.find((x) => x.voiceURI === voiceURI);
-    if (v) u.voice = v;
-    window.speechSynthesis.speak(u);
+  async function speak(text) {
+    const clean = text.replace(/\.\.\./g, "").trim();
+    if (!clean) return;
+    try {
+      const res = await fetch("/api/speak", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: clean }),
+      });
+      if (!res.ok) throw new Error("TTS failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audio.playbackRate = rate < 0.5 ? 0.5 : rate;
+      audio.play();
+      audio.onended = () => URL.revokeObjectURL(url);
+    } catch (e) {
+      if (!window.speechSynthesis) return;
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(clean);
+      u.lang = "fr-FR";
+      u.rate = rate;
+      const v = voices.find((x) => x.voiceURI === voiceURI);
+      if (v) u.voice = v;
+      window.speechSynthesis.speak(u);
+    }
   }
 
   const cat = DATA[catIndex];
