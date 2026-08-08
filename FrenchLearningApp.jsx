@@ -403,8 +403,8 @@ function ContextBadge({ c }) {
   const cfg = CTX[c] || { label: c, icon: MapPin, cls: "bg-slate-100 text-slate-600" };
   const Icon = cfg.icon;
   return (
-    <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${cfg.cls}`}>
-      <Icon size={12} /> {cfg.label}
+    <span className={`inline-flex items-center gap-1 text-sm font-medium px-2 py-0.5 rounded-full ${cfg.cls}`}>
+      <Icon size={13} /> {cfg.label}
     </span>
   );
 }
@@ -413,23 +413,11 @@ export default function FrenchLearningApp() {
   const [mode, setMode] = useState("learn");
   const [catIndex, setCatIndex] = useState(0);
   const [rate, setRate] = useState(0.7);
-  const [voices, setVoices] = useState([]);
-  const [voiceURI, setVoiceURI] = useState("");
+  const [voice, setVoice] = useState("sarah");
 
   const [cardIndex, setCardIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [showFrench, setShowFrench] = useState(false);
-
-  useEffect(() => {
-    function loadVoices() {
-      const all = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
-      const fr = all.filter((v) => v.lang && v.lang.toLowerCase().startsWith("fr"));
-      setVoices(fr.length ? fr : all);
-      if (fr.length && !voiceURI) setVoiceURI(fr[0].voiceURI);
-    }
-    loadVoices();
-    if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = loadVoices;
-  }, []);
 
   async function speak(text) {
     const clean = text.replace(/\.\.\./g, "").trim();
@@ -438,7 +426,7 @@ export default function FrenchLearningApp() {
       const res = await fetch("/api/speak", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: clean }),
+        body: JSON.stringify({ text: clean, voice }),
       });
       if (!res.ok) throw new Error("TTS failed");
       const blob = await res.blob();
@@ -453,8 +441,6 @@ export default function FrenchLearningApp() {
       const u = new SpeechSynthesisUtterance(clean);
       u.lang = "fr-FR";
       u.rate = rate;
-      const v = voices.find((x) => x.voiceURI === voiceURI);
-      if (v) u.voice = v;
       window.speechSynthesis.speak(u);
     }
   }
@@ -470,22 +456,29 @@ export default function FrenchLearningApp() {
   function prevCard() { setFlipped(false); setCardIndex((i) => (i - 1 + allCards.length) % allCards.length); }
   function randomCard() { setFlipped(false); setCardIndex(Math.floor(Math.random() * allCards.length)); }
 
+  const voiceBtn = (id, emoji, name, activeCls) => (
+    <button onClick={() => setVoice(id)}
+      className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-base font-medium transition border ${voice === id ? `${activeCls} text-white border-transparent shadow` : "bg-white text-slate-500 border-slate-200"}`}>
+      <span className="text-lg">{emoji}</span> {name}
+    </button>
+  );
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800">
+    <div className="min-h-screen bg-slate-50 text-slate-800" style={{ fontFamily: 'Georgia, "Times New Roman", "Book Antiqua", serif' }}>
       <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-2xl">🇫🇷</span>
-            <h1 className="text-lg font-bold">Ma Petite Française</h1>
+            <span className="text-3xl">🇫🇷</span>
+            <h1 className="text-2xl font-bold">Ma Petite Française</h1>
           </div>
           <div className="flex gap-1 bg-slate-100 rounded-full p-1">
             <button onClick={() => setMode("learn")}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium transition ${mode === "learn" ? "bg-white shadow text-rose-600" : "text-slate-500"}`}>
-              <BookOpen size={16} /> Learn
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-base font-medium transition ${mode === "learn" ? "bg-white shadow text-rose-600" : "text-slate-500"}`}>
+              <BookOpen size={18} /> Learn
             </button>
             <button onClick={() => setMode("flip")}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium transition ${mode === "flip" ? "bg-white shadow text-rose-600" : "text-slate-500"}`}>
-              <Layers size={16} /> Cards
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-base font-medium transition ${mode === "flip" ? "bg-white shadow text-rose-600" : "text-slate-500"}`}>
+              <Layers size={18} /> Cards
             </button>
           </div>
         </div>
@@ -495,17 +488,15 @@ export default function FrenchLearningApp() {
         <div className="bg-white rounded-2xl border border-slate-200 p-4 flex flex-col sm:flex-row gap-4 sm:items-center">
           <div className="flex items-center gap-2 flex-1">
             <Gauge size={18} className="text-slate-400 shrink-0" />
-            <span className="text-sm text-slate-500 w-20 shrink-0">Speed {rate.toFixed(1)}x</span>
+            <span className="text-base text-slate-500 w-24 shrink-0">Speed {rate.toFixed(1)}x</span>
             <input type="range" min="0.4" max="1" step="0.1" value={rate}
               onChange={(e) => setRate(parseFloat(e.target.value))} className="w-full accent-rose-500" />
           </div>
-          <div className="flex items-center gap-2 flex-1">
+          <div className="flex items-center gap-2">
             <Volume2 size={18} className="text-slate-400 shrink-0" />
-            <select value={voiceURI} onChange={(e) => setVoiceURI(e.target.value)}
-              className="text-sm border border-slate-200 rounded-lg px-2 py-1.5 w-full bg-white">
-              {voices.length === 0 && <option>Loading voices...</option>}
-              {voices.map((v) => (<option key={v.voiceURI} value={v.voiceURI}>{v.name}</option>))}
-            </select>
+            <span className="text-base text-slate-500 shrink-0">Voice:</span>
+            {voiceBtn("sarah", "👩", "Sarah", "bg-rose-500")}
+            {voiceBtn("patrick", "👨", "Patrick", "bg-blue-500")}
           </div>
         </div>
       </div>
@@ -515,7 +506,7 @@ export default function FrenchLearningApp() {
           <div className="flex gap-2 overflow-x-auto pb-3 -mx-1 px-1">
             {DATA.map((c, i) => (
               <button key={i} onClick={() => setCatIndex(i)}
-                className={`whitespace-nowrap px-3 py-1.5 rounded-full text-sm font-medium transition ${i === catIndex ? `${c.color} text-white` : "bg-white text-slate-500 border border-slate-200"}`}>
+                className={`whitespace-nowrap px-3 py-1.5 rounded-full text-base font-medium transition ${i === catIndex ? `${c.color} text-white` : "bg-white text-slate-500 border border-slate-200"}`}>
                 {c.cat}
               </button>
             ))}
@@ -526,25 +517,25 @@ export default function FrenchLearningApp() {
               <div key={i} className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
                 <div className={`flex items-start justify-between gap-3 p-4 ${cat.color} bg-opacity-10`}>
                   <div className="min-w-0">
-                    <p className="text-xl font-bold text-slate-800">{s.fr}</p>
-                    <p className="text-sm text-slate-500">{s.en}</p>
+                    <p className="text-2xl font-bold text-slate-800">{s.fr}</p>
+                    <p className="text-base text-slate-500">{s.en}</p>
                   </div>
                   <button onClick={() => speak(s.fr)}
-                    className={`shrink-0 w-11 h-11 rounded-full ${cat.color} text-white flex items-center justify-center active:scale-95 transition`}>
-                    <Volume2 size={20} />
+                    className={`shrink-0 w-12 h-12 rounded-full ${cat.color} text-white flex items-center justify-center active:scale-95 transition`}>
+                    <Volume2 size={22} />
                   </button>
                 </div>
                 <div className="divide-y divide-slate-100">
                   {s.ex.map((ex, j) => (
                     <div key={j} className="flex items-start gap-3 p-4">
                       <button onClick={() => speak(ex.fr)}
-                        className="shrink-0 w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center active:scale-95 transition">
-                        <Volume2 size={16} />
+                        className="shrink-0 w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center active:scale-95 transition">
+                        <Volume2 size={18} />
                       </button>
                       <div className="min-w-0">
                         <ContextBadge c={ex.c} />
-                        <p className="font-semibold text-slate-800 mt-1">{ex.fr}</p>
-                        <p className="text-sm text-slate-400">{ex.en}</p>
+                        <p className="text-lg font-semibold text-slate-800 mt-1">{ex.fr}</p>
+                        <p className="text-base text-slate-400">{ex.en}</p>
                       </div>
                     </div>
                   ))}
@@ -558,40 +549,40 @@ export default function FrenchLearningApp() {
       {mode === "flip" && (
         <main className="max-w-3xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between mb-4">
-            <span className="text-sm text-slate-500">Card {cardIndex + 1} / {allCards.length}</span>
+            <span className="text-base text-slate-500">Card {cardIndex + 1} / {allCards.length}</span>
             <button onClick={() => setShowFrench((v) => !v)}
-              className="text-sm font-medium text-rose-600 bg-rose-50 px-3 py-1.5 rounded-full">
+              className="text-base font-medium text-rose-600 bg-rose-50 px-3 py-1.5 rounded-full">
               {showFrench ? "FR → guess EN" : "EN → guess FR"}
             </button>
           </div>
 
           <div onClick={() => setFlipped((f) => !f)}
             className="relative bg-white rounded-3xl border-2 border-slate-200 min-h-64 flex flex-col items-center justify-center cursor-pointer select-none px-6 py-8 text-center shadow-sm">
-            <span className={`absolute top-4 left-4 text-xs px-2 py-1 rounded-full text-white ${card.color}`}>{card.cat}</span>
+            <span className={`absolute top-4 left-4 text-sm px-2 py-1 rounded-full text-white ${card.color}`}>{card.cat}</span>
             {!flipped ? (
               <>
-                <p className="text-xs uppercase tracking-wide text-slate-400 mb-2">{showFrench ? "French" : "English"}</p>
-                <p className="text-2xl font-bold">{showFrench ? card.fr : card.en}</p>
-                <p className="text-xs text-slate-400 mt-4">👆 tap to reveal</p>
+                <p className="text-sm uppercase tracking-wide text-slate-400 mb-2">{showFrench ? "French" : "English"}</p>
+                <p className="text-3xl font-bold">{showFrench ? card.fr : card.en}</p>
+                <p className="text-sm text-slate-400 mt-4">👆 tap to reveal</p>
               </>
             ) : (
               <>
-                <p className="text-xs uppercase tracking-wide text-slate-400 mb-2">{showFrench ? "English" : "French"}</p>
-                <p className="text-2xl font-bold">{showFrench ? card.en : card.fr}</p>
+                <p className="text-sm uppercase tracking-wide text-slate-400 mb-2">{showFrench ? "English" : "French"}</p>
+                <p className="text-3xl font-bold">{showFrench ? card.en : card.fr}</p>
                 <div className="mt-4 w-full max-w-sm space-y-2">
                   {card.ex.map((ex, j) => (
                     <div key={j} className="flex items-center gap-2 bg-slate-50 rounded-xl p-2 text-left">
                       <button onClick={(e) => { e.stopPropagation(); speak(ex.fr); }}
-                        className="shrink-0 w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center">
-                        <Volume2 size={14} />
+                        className="shrink-0 w-9 h-9 rounded-full bg-white border border-slate-200 flex items-center justify-center">
+                        <Volume2 size={16} />
                       </button>
-                      <p className="text-sm text-slate-700">{ex.fr}</p>
+                      <p className="text-base text-slate-700">{ex.fr}</p>
                     </div>
                   ))}
                 </div>
                 <button onClick={(e) => { e.stopPropagation(); speak(card.fr); }}
-                  className={`mt-4 flex items-center gap-2 ${card.color} text-white px-4 py-2 rounded-full text-sm`}>
-                  <Volume2 size={16} /> Say the stem
+                  className={`mt-4 flex items-center gap-2 ${card.color} text-white px-4 py-2 rounded-full text-base`}>
+                  <Volume2 size={18} /> Say the stem
                 </button>
               </>
             )}
@@ -606,8 +597,8 @@ export default function FrenchLearningApp() {
         </main>
       )}
 
-      <footer className="text-center text-xs text-slate-400 py-6">
-        Prototype · browser voice for now · ElevenLabs after deploy
+      <footer className="text-center text-sm text-slate-400 py-6">
+        Ma Petite Française · voices by Sarah & Patrick 🇫🇷
       </footer>
     </div>
   );
